@@ -16,7 +16,9 @@
     "incremental": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@/lib/vars": ["./lib/vars.ts"],
+      "@/lib/*": ["./lib/*"]
     }
   },
   "include": ["**/*.ts", "**/**.ts", "**/*.tsx"],

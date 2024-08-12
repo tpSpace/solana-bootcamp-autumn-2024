@@ -11,8 +11,8 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 
-import { payer, connection } from "@/lib/vars";
-import { explorerURL, printConsoleSeparator } from "@/lib/helpers";
+import { payer, connection } from "../lib/vars";
+import { explorerURL, printConsoleSeparator } from "../lib/helpers";
 
 (async () => {
   console.log("Payer address:", payer.publicKey.toBase58());
