@@ -21,7 +21,7 @@ import { explorerURL, printConsoleSeparator } from "./lib/helpers";
     `New account secret key: ${bs58.default.encode(newAccount.secretKey)}`
   );
 
-  // Load payer account
+  // Load payer account from local keystore
   const payerAccount = payer.publicKey;
   console.log(`Payer account: ${payerAccount.toBase58()}`);
   console.log(
@@ -30,7 +30,7 @@ import { explorerURL, printConsoleSeparator } from "./lib/helpers";
     } SOL`
   );
 
-  // Send a minimum SOl to the new account
+  // Send a minimum SOl to the new account and transfer 0.1 SOL to STATIC_PUBLICKEY
 
   // on-chain space to allocated (in number of bytes)
   const space = 0;
@@ -45,7 +45,7 @@ import { explorerURL, printConsoleSeparator } from "./lib/helpers";
   console.log("Total lamports:", lamports);
 
   // create this simple instruction using web3.js helper function
-  const airdropIx = SystemProgram.createAccount({
+  const createAccountIx = SystemProgram.createAccount({
     // `fromPubkey` - this account will need to sign the transaction
     fromPubkey: payer.publicKey,
     // `newAccountPubkey` - the account address to create on chain
@@ -74,7 +74,7 @@ import { explorerURL, printConsoleSeparator } from "./lib/helpers";
   const message = new TransactionMessage({
     payerKey: payer.publicKey,
     recentBlockhash,
-    instructions: [airdropIx, transferIx],
+    instructions: [createAccountIx, transferIx],
   }).compileToV0Message();
   // create a versioned transaction using the message
   const tx = new VersionedTransaction(message);
