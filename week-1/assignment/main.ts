@@ -1,61 +1,97 @@
-import solanaWeb3 from "@solana/web3.js";
-const {
-  Keypair,
+import {
   Connection,
+  Keypair,
   LAMPORTS_PER_SOL,
-  Transaction,
   SystemProgram,
-  sendAndConfirmTransaction,
-} = solanaWeb3;
-
+  TransactionMessage,
+  VersionedTransaction,
+} from "@solana/web3.js";
+import * as bs58 from "bs58";
+import { payer, connection, STATIC_PUBLICKEY } from "./lib/vars";
+import { explorerURL, printConsoleSeparator } from "./lib/helpers";
 (async () => {
-  // Connect to the Solana devnet
-  const connection = new Connection(
-    "https://api.devnet.solana.com",
-    "confirmed"
-  );
+  // TODO: Create a new Solana account with a balance of some SOL.
+  // TODO: Transfer 0.1 SOL from the newly created account to 63EEC9FfGyksm7PkVC6z8uAmqozbQcTzbkWJNsgqjkFs account.
+  // TODO: Close the newly created account.
 
-  // Create a new Solana account
+  // Create a keypair for the new account
   const newAccount = Keypair.generate();
-  console.log("New account created:", newAccount.publicKey.toBase58());
-
-  // print out the balance of the new account
-  const balance = await connection.getBalance(newAccount.publicKey);
-  console.log("Balance of new account:", balance / LAMPORTS_PER_SOL);
-
-  // Airdrop some SOL to the new account
-  if (balance <= LAMPORTS_PER_SOL) {
-    console.log("Low balance, requesting an airdrop...");
-    await connection.requestAirdrop(newAccount.publicKey, LAMPORTS_PER_SOL);
-  }
-
-  // Recipient account
-  const recipientPublicKey = "63EEC9FfGyksm7PkVC6z8uAmqozbQcTzbkWJNsgqjkFs";
-
-  // Create a transaction
-  const transaction = new Transaction();
-
-  // Add transfer instruction
-  transaction.add(
-    SystemProgram.transfer({
-      fromPubkey: newAccount.publicKey,
-      toPubkey: new solanaWeb3.PublicKey(recipientPublicKey),
-      lamports: 0.1 * LAMPORTS_PER_SOL,
-    })
+  console.log(`New account public key: ${newAccount.publicKey.toBase58()}`);
+  console.log(
+    `New account secret key: ${bs58.default.encode(newAccount.secretKey)}`
   );
 
-  // Add close account instruction
-  transaction.add(
-    SystemProgram.closeAccount({
-      accountPubkey: newAccount.publicKey,
-      destinationPubkey: recipientPublicKey,
-      owner: newAccount.publicKey,
-    })
+  // Load payer account
+  const payerAccount = payer.publicKey;
+  console.log(`Payer account: ${payerAccount.toBase58()}`);
+  console.log(
+    `Payer balance: ${
+      (await connection.getBalance(payerAccount)) / LAMPORTS_PER_SOL
+    } SOL`
   );
 
-  // Sign and send the transaction
-  const signature = await sendAndConfirmTransaction(connection, transaction, [
-    newAccount,
-  ]);
-  console.log("Transaction signature:", signature);
+  // Send a minimum SOl to the new account
+
+  // on-chain space to allocated (in number of bytes)
+  const space = 0;
+
+  // request the cost (in lamports) to allocate `space` number of bytes on chain
+  const lamports =
+    (await connection.getMinimumBalanceForRentExemption(space)) +
+    0.1 * LAMPORTS_PER_SOL;
+
+  // 5000 * 4 = gas fee
+
+  console.log("Total lamports:", lamports);
+
+  // create this simple instruction using web3.js helper function
+  const airdropIx = SystemProgram.createAccount({
+    // `fromPubkey` - this account will need to sign the transaction
+    fromPubkey: payer.publicKey,
+    // `newAccountPubkey` - the account address to create on chain
+    newAccountPubkey: newAccount.publicKey,
+    // lamports to store in this account
+    lamports,
+    // total space to allocate
+    space,
+    // the owning program for this account
+    programId: SystemProgram.programId,
+  });
+
+  // create a transfer instruction to send 0.1 SOL from the new account to the STATIC_RECIPIENT
+  const transferIx = SystemProgram.transfer({
+    fromPubkey: newAccount.publicKey,
+    toPubkey: STATIC_PUBLICKEY,
+    lamports: 0.1 * LAMPORTS_PER_SOL,
+  });
+
+  // get the latest recent blockhash
+  const recentBlockhash = await connection
+    .getLatestBlockhash()
+    .then((res) => res.blockhash);
+
+  // create a message (v0)
+  const message = new TransactionMessage({
+    payerKey: payer.publicKey,
+    recentBlockhash,
+    instructions: [airdropIx, transferIx],
+  }).compileToV0Message();
+  // create a versioned transaction using the message
+  const tx = new VersionedTransaction(message);
+
+  // sign the transaction with our needed Signers (e.g. `payer` and `newAccount`)
+  tx.sign([payer, newAccount]);
+
+  console.log("tx after signing:", tx);
+
+  // actually send the transaction
+  const signature = await connection.sendTransaction(tx);
+
+  /**
+   * display some helper text
+   */
+  printConsoleSeparator();
+
+  console.log("Transaction completed.");
+  console.log(explorerURL({ txSignature: signature }));
 })();
