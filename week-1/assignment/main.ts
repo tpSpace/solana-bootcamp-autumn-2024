@@ -40,8 +40,6 @@ import { explorerURL, printConsoleSeparator } from "./lib/helpers";
     (await connection.getMinimumBalanceForRentExemption(space)) +
     0.1 * LAMPORTS_PER_SOL;
 
-  // 5000 * 4 = gas fee
-
   console.log("Total lamports:", lamports);
 
   // create this simple instruction using web3.js helper function
