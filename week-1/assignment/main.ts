@@ -65,6 +65,13 @@ import { explorerURL, printConsoleSeparator } from "./lib/helpers";
     lamports: 0.1 * LAMPORTS_PER_SOL,
   });
 
+  // Close the new account by transferring all the lamports to the payer account
+  const closeAccountIx = SystemProgram.transfer({
+    fromPubkey: newAccount.publicKey,
+    toPubkey: payer.publicKey,
+    lamports: lamports - 0.1 * LAMPORTS_PER_SOL,
+  });
+
   // get the latest recent blockhash
   const recentBlockhash = await connection
     .getLatestBlockhash()
@@ -74,7 +81,7 @@ import { explorerURL, printConsoleSeparator } from "./lib/helpers";
   const message = new TransactionMessage({
     payerKey: payer.publicKey,
     recentBlockhash,
-    instructions: [createAccountIx, transferIx],
+    instructions: [createAccountIx, transferIx, closeAccountIx],
   }).compileToV0Message();
   // create a versioned transaction using the message
   const tx = new VersionedTransaction(message);
